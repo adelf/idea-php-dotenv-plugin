@@ -45,7 +45,6 @@ intellij {
 
 patchPluginXml {
     sinceBuild '193'
-    untilBuild '212.*'
 }
 
 buildSearchableOptions {
