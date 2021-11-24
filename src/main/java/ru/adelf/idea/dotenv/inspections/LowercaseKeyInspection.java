@@ -11,21 +11,16 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import ru.adelf.idea.dotenv.DotEnvFactory;
 import ru.adelf.idea.dotenv.psi.DotEnvFile;
+import ru.adelf.idea.dotenv.psi.DotEnvKey;
 import ru.adelf.idea.dotenv.psi.DotEnvTypes;
-import ru.adelf.idea.dotenv.psi.impl.DotEnvKeyImpl;
 
-public class IncorrectDelimiterInspection extends LocalInspectionTool {
+public class LowercaseKeyInspection extends LocalInspectionTool {
     // Change the display name within the plugin.xml
     // This needs to be here as otherwise the tests will throw errors.
     @NotNull
     @Override
     public String getDisplayName() {
-        return "Incorrect delimiter";
-    }
-
-    @Override
-    public boolean runForWholeFile() {
-        return true;
+        return "Key uses lowercase chars";
     }
 
     @Nullable
@@ -42,21 +37,24 @@ public class IncorrectDelimiterInspection extends LocalInspectionTool {
     private ProblemsHolder analyzeFile(@NotNull PsiFile file, @NotNull InspectionManager manager, boolean isOnTheFly) {
         ProblemsHolder problemsHolder = new ProblemsHolder(manager, file, isOnTheFly);
 
-        PsiTreeUtil.findChildrenOfType(file, DotEnvKeyImpl.class).forEach(key -> {
-            if (key.getText().contains("-")) {
-                problemsHolder.registerProblem(key, "Expected: '_' Found: '-'"/*, new ReplaceDelimiterQuickFix()*/);
+        PsiTreeUtil.findChildrenOfType(file, DotEnvKey.class).forEach(dotEnvKey -> {
+            if (dotEnvKey.getText().matches(".*[a-z].*")) {
+                problemsHolder.registerProblem(dotEnvKey,
+                        "Key uses lowercase chars. Only keys with uppercase chars are allowed."/*,
+                        new ForceUppercaseQuickFix()*/
+                );
             }
         });
 
         return problemsHolder;
     }
 
-    private static class ReplaceDelimiterQuickFix implements LocalQuickFix {
+    private static class ForceUppercaseQuickFix implements LocalQuickFix {
 
         @NotNull
         @Override
         public String getName() {
-            return "Replace delimiter";
+            return "Change to uppercase";
         }
 
         public void applyFix(@NotNull Project project, @NotNull ProblemDescriptor descriptor) {
@@ -64,7 +62,7 @@ public class IncorrectDelimiterInspection extends LocalInspectionTool {
                 PsiElement psiElement = descriptor.getPsiElement();
 
                 PsiElement newPsiElement = DotEnvFactory.createFromText(project, DotEnvTypes.KEY,
-                        psiElement.getText().replace("-","_")+"=dummy");
+                        psiElement.getText().toUpperCase() +"=dummy");
 
                 psiElement.replace(newPsiElement);
             } catch (IncorrectOperationException e) {
